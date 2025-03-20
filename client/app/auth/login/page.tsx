@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { signInWithGoogle } from "@/config/firebase"
 
 const formSchema = z.object({
   email: z.string().email(),
@@ -36,18 +37,24 @@ export default function LoginPage() {
     },
   })
 
+  const loginWithGoogle = async () => {
+    try {
+      const user = await signInWithGoogle();
+      if(user){
+        router.push("/dashboard")
+      }
+
+    } catch (error) {
+      toast.error("Something went wrong")
+    }
+  }
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       setIsLoading(true)
-      const result = await signIn("credentials", {
-        ...values,
-        redirect: false,
-      })
+      
 
-      if (result?.error) {
-        toast.error("Invalid credentials")
-        return
-      }
+      
 
       router.push("/dashboard")
       toast.success("Welcome back!")
@@ -106,7 +113,7 @@ export default function LoginPage() {
           <Button
             variant="outline"
             className="w-full"
-            onClick={() => signIn("google")}
+            onClick={() => }
           >
             Continue with Google
           </Button>

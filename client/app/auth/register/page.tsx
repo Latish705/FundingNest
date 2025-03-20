@@ -159,7 +159,7 @@ export default function RegisterPage() {
       const token = await getCurrentUserToken();
       console.log("loggin success" + token);
 
-      router.push("/auth/interest");
+      router.push("/auth/startupData");
     } catch (error: any) {
       console.log(error.message);
       toast.error("Google login failed");
@@ -175,7 +175,7 @@ export default function RegisterPage() {
       const token = await getCurrentUserToken();
       console.log("loggin success" + token);
 
-      router.push("/auth/finanacialAdvisior");
+      router.push("/auth/request");
     } catch (error: any) {
       console.log(error.message);
       toast.error("Google login failed");
@@ -202,13 +202,13 @@ export default function RegisterPage() {
 
       // Redirect based on role
       if (selectedRole === "investor") {
-        router.push("/user/dashboard");
+        router.push("/user/interest");
       } else if (selectedRole === "startup") {
-        router.push("/startup/dashboard");
+        router.push("/auth/startupData");
       } else if (selectedRole === "advisor") {
-        router.push("/admin/dashboard");
-      }else if (values.role === "admin") {
-        router.push("/auth/admin");
+        router.push("/admin/request");
+      } else if (values.role === "admin") {
+        router.push("/auth/request");
       }
 
       toast.success("Welcome to StartupFund!");
