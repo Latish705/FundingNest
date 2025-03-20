@@ -14,3 +14,5 @@ export const initialzeRedis = async () => {
     console.log(error);
   }
 };
+
+export default initialzeRedis;
