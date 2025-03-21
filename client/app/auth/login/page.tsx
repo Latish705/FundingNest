@@ -1,11 +1,11 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { signIn } from "next-auth/react"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import * as z from "zod"
-import { Button } from "@/components/ui/button"
+import { useState } from "react";
+import { signIn } from "next-auth/react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
@@ -13,21 +13,28 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { toast } from "sonner"
-import { useRouter } from "next/navigation"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { signInWithGoogle } from "@/config/firebase"
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { signInWithGoogle } from "@/config/firebase";
 
 const formSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
-})
+});
 
 export default function LoginPage() {
-  const router = useRouter()
-  const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -35,33 +42,31 @@ export default function LoginPage() {
       email: "",
       password: "",
     },
-  })
+  });
 
   const loginWithGoogle = async () => {
     try {
       const user = await signInWithGoogle();
-      if(user){
-        router.push("/dashboard")
+      if (user) {
+        router.push("/dashboard");
+      } else {
+        toast.error("Something went wrong");
       }
-
     } catch (error) {
-      toast.error("Something went wrong")
+      toast.error("Something went wrong");
     }
-  }
+  };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      setIsLoading(true)
-      
+      setIsLoading(true);
 
-      
-
-      router.push("/dashboard")
-      toast.success("Welcome back!")
+      router.push("/dashboard");
+      toast.success("Welcome back!");
     } catch (error) {
-      toast.error("Something went wrong")
+      toast.error("Something went wrong");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 
@@ -70,9 +75,7 @@ export default function LoginPage() {
       <Card className="w-[400px]">
         <CardHeader>
           <CardTitle>Welcome back</CardTitle>
-          <CardDescription>
-            Sign in to your account to continue
-          </CardDescription>
+          <CardDescription>Sign in to your account to continue</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -113,18 +116,22 @@ export default function LoginPage() {
           <Button
             variant="outline"
             className="w-full"
-            onClick={() => }
+            onClick={() => signInWithGoogle()}
           >
             Continue with Google
           </Button>
           <div className="text-sm text-muted-foreground text-center">
             Don't have an account?{" "}
-            <Button variant="link" className="p-0" onClick={() => router.push("/auth/register")}>
+            <Button
+              variant="link"
+              className="p-0"
+              onClick={() => router.push("/auth/register")}
+            >
               Sign up
             </Button>
           </div>
         </CardFooter>
       </Card>
     </div>
-  )
+  );
 }
