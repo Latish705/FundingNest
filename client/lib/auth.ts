@@ -1,57 +1,67 @@
-import { NextAuthOptions } from "next-auth"
-import CredentialsProvider from "next-auth/providers/credentials"
-import GoogleProvider from "next-auth/providers/google"
+import { NextAuthOptions } from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "./firebase";
 
 export const authOptions: NextAuthOptions = {
   providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
     CredentialsProvider({
-      name: "credentials",
+      name: "Credentials",
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          return null
+        if (!credentials?.email || !credentials.password) {
+          return null;
         }
-
-        // Add your authentication logic here
-        // This is just a placeholder
-        return {
-          id: "1",
-          email: credentials.email,
-          name: "John Doe",
-          role: "investor"
+        
+        try {
+          const userCredential = await signInWithEmailAndPassword(
+            auth,
+            credentials.email,
+            credentials.password
+          );
+          
+          const user = userCredential.user;
+          const idToken = await user.getIdToken();
+          
+          return {
+            id: user.uid,
+            name: user.displayName,
+            email: user.email,
+            image: user.photoURL,
+            token: idToken
+          };
+        } catch (error) {
+          console.error("Authentication error:", error);
+          return null;
         }
       }
     })
   ],
-  pages: {
-    signIn: "/auth/login",
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   callbacks: {
-    async session({ session, token }) {
-      return {
-        ...session,
-        user: {
-          ...session.user,
-          id: token.sub,
-          role: token.role
-        }
-      }
-    },
     async jwt({ token, user }) {
       if (user) {
-        return {
-          ...token,
-          role: user.role
-        }
+        token.id = user.id;
+        token.token = user.token;
       }
-      return token
+      return token;
+    },
+    async session({ session, token }) {
+      if (token && session.user) {
+        session.user.id = token.id as string;
+        session.user.token = token.token as string;
+      }
+      return session;
     }
+  },
+  pages: {
+    signIn: "/login",
+    error: "/login"
   }
-}
+};

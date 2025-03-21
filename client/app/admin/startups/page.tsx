@@ -1,119 +1,88 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Input } from '@/components/ui/input';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, Search, TrendingUp } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { MoreHorizontal, Plus, Search } from "lucide-react";
+import { toast } from "sonner";
+import Link from "next/link";
 
-type Startup = {
-  id: string;
-  name: string;
-  description: string;
-  funding_goal: number;
-  current_funding: number;
+interface Startup {
+  _id: string;
+  company_name: string;
+  unified_sector: string;
+  total_equity_funding: number;
+  latest_post_money_valuation: number;
   status: 'pending' | 'approved' | 'rejected';
   created_at: string;
-  founder: {
-    email: string;
-  };
-};
+}
 
-// Mock data
-const mockStartups: Startup[] = [
-  {
-    id: '1',
-    name: 'EcoTech Solutions',
-    description: 'Sustainable energy solutions for homes',
-    funding_goal: 500000,
-    current_funding: 350000,
-    status: 'approved',
-    created_at: '2024-03-15',
-    founder: {
-      email: 'founder@ecotech.com',
-    },
-  },
-  {
-    id: '2',
-    name: 'HealthAI',
-    description: 'AI-powered health diagnostics',
-    funding_goal: 1000000,
-    current_funding: 750000,
-    status: 'approved',
-    created_at: '2024-03-14',
-    founder: {
-      email: 'founder@healthai.com',
-    },
-  },
-  {
-    id: '3',
-    name: 'SmartFarm',
-    description: 'IoT solutions for agriculture',
-    funding_goal: 300000,
-    current_funding: 50000,
-    status: 'pending',
-    created_at: '2024-03-13',
-    founder: {
-      email: 'founder@smartfarm.com',
-    },
-  },
-  {
-    id: '4',
-    name: 'CyberShield',
-    description: 'Next-gen cybersecurity platform',
-    funding_goal: 800000,
-    current_funding: 0,
-    status: 'rejected',
-    created_at: '2024-03-12',
-    founder: {
-      email: 'founder@cybershield.com',
-    },
-  },
-  {
-    id: '5',
-    name: 'UrbanMobility',
-    description: 'Electric vehicle sharing platform',
-    funding_goal: 1500000,
-    current_funding: 100000,
-    status: 'pending',
-    created_at: '2024-03-11',
-    founder: {
-      email: 'founder@urbanmobility.com',
-    },
-  },
-];
+export default function AdminStartupsPage() {
+  const [startups, setStartups] = useState<Startup[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [error, setError] = useState("");
 
-export default function StartupsPage() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [startups, setStartups] = useState<Startup[]>(mockStartups);
+  useEffect(() => {
+    const fetchStartups = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch("/api/admin/startups");
+        
+        if (!response.ok) {
+          throw new Error("Failed to fetch startups");
+        }
+        
+        const data = await response.json();
+        setStartups(data.startups);
+      } catch (error: any) {
+        setError(error.message || "Failed to load startups");
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchStartups();
+  }, []);
 
-  const filteredStartups = startups.filter((startup) =>
-    startup.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredStartups = startups.filter(startup => 
+    startup.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    startup.unified_sector.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleStatusChange = async (startupId: string, newStatus: 'approved' | 'rejected') => {
+    try {
+      const response = await fetch(`/api/admin/startups/${startupId}/status`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || "Failed to update status");
+      }
+
+      setStartups(prevStartups => 
+        prevStartups.map(startup => 
+          startup._id === startupId ? { ...startup, status: newStatus } : startup
+        )
+      );
+
+      toast.success(`Startup ${newStatus} successfully`);
+    } catch (error: any) {
+      toast.error(error.message || "An error occurred");
+    }
+  };
+
   const totalFunding = startups.reduce(
-    (sum, startup) => sum + startup.current_funding,
+    (sum, startup) => sum + (startup.total_equity_funding || 0),
     0
   );
 
@@ -125,21 +94,12 @@ export default function StartupsPage() {
     (startup) => startup.status === 'pending'
   ).length;
 
-  const handleStatusChange = (startupId: string, newStatus: 'approved' | 'rejected') => {
-    setStartups(startups.map(startup => 
-      startup.id === startupId 
-        ? { ...startup, status: newStatus }
-        : startup
-    ));
-  };
-
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto px-4 py-8 space-y-6">
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Funding</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">${totalFunding.toLocaleString()}</div>
@@ -167,15 +127,20 @@ export default function StartupsPage() {
         <h2 className="text-3xl font-bold tracking-tight">Startups</h2>
         <div className="flex items-center gap-4">
           <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search startups..."
-              className="pl-8"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8 w-[250px]"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button>Add Startup</Button>
+          <Link href="/admin/startups/add">
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Startup
+            </Button>
+          </Link>
         </div>
       </div>
 
@@ -184,28 +149,40 @@ export default function StartupsPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
-              <TableHead>Founder</TableHead>
-              <TableHead>Funding Goal</TableHead>
-              <TableHead>Current Funding</TableHead>
+              <TableHead>Sector</TableHead>
+              <TableHead>Funding</TableHead>
+              <TableHead>Valuation</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Created At</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredStartups.length === 0 ? (
+            {loading ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center">
+                <TableCell colSpan={7} className="text-center py-8">
+                  Loading...
+                </TableCell>
+              </TableRow>
+            ) : error ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8 text-red-500">
+                  {error}
+                </TableCell>
+              </TableRow>
+            ) : filteredStartups.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8">
                   No startups found
                 </TableCell>
               </TableRow>
             ) : (
               filteredStartups.map((startup) => (
-                <TableRow key={startup.id}>
-                  <TableCell className="font-medium">{startup.name}</TableCell>
-                  <TableCell>{startup.founder.email}</TableCell>
-                  <TableCell>${startup.funding_goal.toLocaleString()}</TableCell>
-                  <TableCell>${startup.current_funding.toLocaleString()}</TableCell>
+                <TableRow key={startup._id}>
+                  <TableCell className="font-medium">{startup.company_name}</TableCell>
+                  <TableCell>{startup.unified_sector}</TableCell>
+                  <TableCell>${startup.total_equity_funding?.toLocaleString() || 0}</TableCell>
+                  <TableCell>${startup.latest_post_money_valuation?.toLocaleString() || 0}</TableCell>
                   <TableCell>
                     <Badge
                       variant={
@@ -231,17 +208,25 @@ export default function StartupsPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem>View Details</DropdownMenuItem>
-                        <DropdownMenuItem>Edit Startup</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleStatusChange(startup.id, 'approved')}>
-                          Approve
+                        <DropdownMenuItem>
+                          <Link href={`/admin/startups/${startup._id}`}>View Details</Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => handleStatusChange(startup.id, 'rejected')}
-                          className="text-destructive"
-                        >
-                          Reject
+                        <DropdownMenuItem>
+                          <Link href={`/admin/startups/${startup._id}/edit`}>Edit Startup</Link>
                         </DropdownMenuItem>
+                        {startup.status === 'pending' && (
+                          <>
+                            <DropdownMenuItem onClick={() => handleStatusChange(startup._id, 'approved')}>
+                              Approve
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleStatusChange(startup._id, 'rejected')}
+                              className="text-destructive"
+                            >
+                              Reject
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

@@ -1,8 +1,26 @@
 "use client";
 
-import { Card } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Loader2 } from "lucide-react";
+import Link from "next/link";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { DollarSign, TrendingUp, PieChart as PieChartIcon, Activity } from "lucide-react";
+
+interface Investment {
+  _id: string;
+  investmentAmount: number;
+  equity: number;
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+  startup: {
+    _id: string;
+    company_name: string;
+    unified_sector: string;
+  };
+}
 
 const performanceData = [
   { month: 'Jan', value: 4000 },
@@ -23,8 +41,76 @@ const sectorData = [
 const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))'];
 
 export default function PortfolioPage() {
+  const [investments, setInvestments] = useState<Investment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const fetchInvestments = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch("/api/investments");
+        
+        if (!response.ok) {
+          throw new Error("Failed to fetch investments");
+        }
+        
+        const data = await response.json();
+        setInvestments(data.investments);
+      } catch (error: any) {
+        setError(error.message || "Failed to load investments");
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchInvestments();
+  }, []);
+
+  const totalInvested = investments.reduce(
+    (sum, investment) => sum + (investment.investmentAmount || 0),
+    0
+  );
+
+  const approvedInvestments = investments.filter(
+    (investment) => investment.status === 'approved'
+  );
+
+  const pendingInvestments = investments.filter(
+    (investment) => investment.status === 'pending'
+  );
+
   return (
-    <div className="p-6 space-y-6">
+    <div className="container mx-auto px-4 py-8 space-y-6">
+      <h1 className="text-3xl font-bold">My Portfolio</h1>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Invested</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${totalInvested.toLocaleString()}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Investments</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{approvedInvestments.length}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pending Investments</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{pendingInvestments.length}</div>
+          </CardContent>
+        </Card>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="p-4">
           <div className="flex items-center space-x-2">
@@ -102,44 +188,69 @@ export default function PortfolioPage() {
         </Card>
       </div>
 
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-4">Current Investments</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b">
-                <th className="text-left py-3 px-4">Startup</th>
-                <th className="text-left py-3 px-4">Investment Date</th>
-                <th className="text-right py-3 px-4">Amount</th>
-                <th className="text-right py-3 px-4">Current Value</th>
-                <th className="text-right py-3 px-4">ROI</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border-b">
-                <td className="py-3 px-4">TechVision AI</td>
-                <td className="py-3 px-4">Jan 15, 2024</td>
-                <td className="text-right py-3 px-4">$25,000</td>
-                <td className="text-right py-3 px-4">$28,750</td>
-                <td className="text-right py-3 px-4 text-green-600">+15%</td>
-              </tr>
-              <tr className="border-b">
-                <td className="py-3 px-4">HealthTech Solutions</td>
-                <td className="py-3 px-4">Dec 1, 2023</td>
-                <td className="text-right py-3 px-4">$30,000</td>
-                <td className="text-right py-3 px-4">$34,500</td>
-                <td className="text-right py-3 px-4 text-green-600">+15%</td>
-              </tr>
-              <tr>
-                <td className="py-3 px-4">Green Energy Corp</td>
-                <td className="py-3 px-4">Feb 1, 2024</td>
-                <td className="text-right py-3 px-4">$20,000</td>
-                <td className="text-right py-3 px-4">$19,800</td>
-                <td className="text-right py-3 px-4 text-red-600">-1%</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>My Investments</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex justify-center items-center h-40">
+              <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+          ) : error ? (
+            <div className="text-center text-red-500 p-4">{error}</div>
+          ) : investments.length === 0 ? (
+            <div className="text-center p-4">
+              <p>You haven't made any investments yet.</p>
+              <Link href="/startups" className="text-blue-500 hover:underline">
+                Browse startups to invest
+              </Link>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Startup</TableHead>
+                  <TableHead>Sector</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Equity %</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Date</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {investments.map((investment) => (
+                  <TableRow key={investment._id}>
+                    <TableCell className="font-medium">
+                      <Link href={`/startups/${investment.startup._id}`} className="hover:underline">
+                        {investment.startup.company_name}
+                      </Link>
+                    </TableCell>
+                    <TableCell>{investment.startup.unified_sector}</TableCell>
+                    <TableCell>${investment.investmentAmount.toLocaleString()}</TableCell>
+                    <TableCell>{investment.equity}%</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          investment.status === 'approved'
+                            ? 'success'
+                            : investment.status === 'rejected'
+                            ? 'destructive'
+                            : 'default'
+                        }
+                      >
+                        {investment.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {new Date(investment.created_at).toLocaleDateString()}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
       </Card>
     </div>
   );
